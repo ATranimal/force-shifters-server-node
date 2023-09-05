@@ -13,7 +13,7 @@ var privateKey = fs.readFileSync(
   "/etc/letsencrypt/live/forceshifters.website/privkey.pem"
 );
 var certificate = fs.readFileSync(
-  "/etc/letsencrypt/live/forceshifters.website/cert.pem"
+  "/etc/letsencrypt/live/forceshifters.website/fullchain.pem"
 );
 
 const server = createServer(
