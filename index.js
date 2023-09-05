@@ -2,14 +2,27 @@
 
 const express = require("express");
 const path = require("path");
-const { createServer } = require("http");
-
+const { createServer } = require("https");
+const fs = require("fs");
 const WebSocket = require("ws");
 
 const app = express();
 app.use(express.static(path.join(__dirname, "/public")));
 
-const server = createServer(app);
+var privateKey = fs.readFileSync(
+  "/etc/letsencrypt/live/forceshifters.website/privkey.pem"
+);
+var certificate = fs.readFileSync(
+  "/etc/letsencrypt/live/forceshifters.website/cert.pem"
+);
+
+const server = createServer(
+  {
+    key: privateKey,
+    cert: certificate,
+  },
+  app
+);
 const wss = new WebSocket.Server({ server });
 
 const firebaseConfig = {
@@ -24,8 +37,7 @@ const firebaseConfig = {
 };
 
 const { initializeApp } = require("firebase/app");
-const { getFirestore, collection, getDocs } = require("firebase/firestore");
-const { getDatabase, ref, child, get, onValue } = require("firebase/database");
+const { getDatabase, ref, onValue } = require("firebase/database");
 
 const fbApp = initializeApp(firebaseConfig);
 const db = getDatabase(fbApp);
