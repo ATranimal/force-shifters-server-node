@@ -24,6 +24,8 @@ const server = createServer(
   app
 );
 const wss = new WebSocket.Server({ server });
+// const wss = new WebSocket.Server({ port: 8080 });
+// console.log("were listening 8080");
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfBpOoGPFuvqRrPGOyQanqVXwybLDnu_g",
@@ -37,22 +39,53 @@ const firebaseConfig = {
 };
 
 const { initializeApp } = require("firebase/app");
-const { getDatabase, ref, onValue } = require("firebase/database");
+const {
+  getDatabase,
+  ref,
+  onValue,
+  connectDatabaseEmulator,
+  set,
+  get,
+  remove,
+  off,
+} = require("firebase/database");
 
-const fbApp = initializeApp(firebaseConfig);
-const db = getDatabase(fbApp);
+let firebaseApp;
+let db;
+
+try {
+  const emulatorUrl = "http://127.0.0.1:9000/?ns=force-animals";
+  // firebaseConfig.databaseURL = emulatorUrl;
+  firebaseApp = initializeApp(firebaseConfig);
+  db = getDatabase(firebaseApp);
+} catch (error) {
+  /*
+   * We skip the "already exists" message which is
+   * not an actual error when we're hot-reloading.
+   */
+  console.log("other error", error);
+  if (!/already exists/u.test(error.message)) {
+    // eslint-disable-next-line no-console
+    console.error("Firebase admin initialization error", error.stack);
+  }
+}
 
 wss.on("connection", function (ws) {
+  let battleRef;
+  let lobbyRef;
+  let userName;
+
   ws.on("message", function (message) {
-    console.log("message", message);
     const parsedMessage = JSON.parse(message);
     console.log("parsedMessage", parsedMessage);
 
     if (parsedMessage.type === "roomName") {
-      const roomName = parsedMessage.roomName;
-      const dbRef = ref(db, `${roomName}`);
-      onValue(dbRef, (snapshot) => {
+      const { roomName } = parsedMessage;
+      battleRef = ref(db, `${roomName}`);
+
+      onValue(battleRef, (snapshot) => {
         const data = snapshot.val();
+        console.log(JSON.stringify(data));
         ws.send(JSON.stringify(data), function () {
           //
           // Ignoring errors.
@@ -60,10 +93,79 @@ wss.on("connection", function (ws) {
         });
       });
     }
+
+    if (parsedMessage.type === "lobby") {
+      lobbyRef = ref(db, `lobby`);
+      userName = parsedMessage.userName;
+      console.log(userName);
+
+      // Add oneself to the lobby list
+      set(ref(db, `lobby/${userName}`), {
+        name: userName,
+        status: "idle",
+      });
+
+      onValue(lobbyRef, (snapshot) => {
+        const data = snapshot.val();
+        console.log(JSON.stringify(data));
+        ws.send(JSON.stringify(data), function () {
+          //
+          // Ignoring errors.
+          //
+        });
+      });
+    }
+
+    if (parsedMessage.type === "challenge") {
+      const opponent = parsedMessage.opponent;
+
+      get(ref(db, `lobby/${opponent}`)).then((value) => {
+        const opponentExistingLobby = value.val();
+
+        set(ref(db, `lobby/${opponent}`), {
+          status: "idle",
+          challenges: [userName],
+          ...opponentExistingLobby,
+        });
+      });
+    }
+
+    if (parsedMessage.type === "enterBattle") {
+      const opponent = parsedMessage.opponent;
+
+      const randomBattleName = Math.random().toString(36).substring(7);
+      // set in battle to both players
+      get(ref(db, `lobby/${userName}`)).then((value) => {
+        const yourExistingLobby = value.val();
+        set(ref(db, `lobby/${userName}`), {
+          ...yourExistingLobby,
+          status: "inBattle",
+          roomName: randomBattleName,
+        });
+
+        get(ref(db, `lobby/${opponent}`)).then((value) => {
+          const opponentExistingLobby = value.val();
+          set(ref(db, `lobby/${opponent}`), {
+            ...opponentExistingLobby,
+            status: "inBattle",
+            roomName: randomBattleName,
+          });
+        });
+      });
+    }
   });
 
   ws.on("close", function () {
+    remove(ref(db, `lobby/${userName}`));
+
     console.log("stopping client interval");
+
+    if (battleRef) {
+      off(battleRef);
+    }
+    if (lobbyRef) {
+      off(lobbyRef);
+    }
   });
 });
 
