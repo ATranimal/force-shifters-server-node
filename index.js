@@ -1,5 +1,8 @@
 "use strict";
 
+// TODO: Exchange for env variables
+const IS_LOCAL = false;
+
 const express = require("express");
 const path = require("path");
 const { createServer } = require("https");
@@ -9,23 +12,34 @@ const WebSocket = require("ws");
 const app = express();
 app.use(express.static(path.join(__dirname, "/public")));
 
-var privateKey = fs.readFileSync(
-  "/etc/letsencrypt/live/forceshifters.website/privkey.pem"
-);
-var certificate = fs.readFileSync(
-  "/etc/letsencrypt/live/forceshifters.website/fullchain.pem"
-);
+//// SECTION FOR SERVER
 
-const server = createServer(
-  {
-    key: privateKey,
-    cert: certificate,
-  },
-  app
-);
-const wss = new WebSocket.Server({ server });
-// const wss = new WebSocket.Server({ port: 8080 });
-// console.log("were listening 8080");
+let wss;
+if (!IS_LOCAL) {
+  var privateKey = fs.readFileSync(
+    "/etc/letsencrypt/live/forceshifters.website/privkey.pem"
+  );
+  var certificate = fs.readFileSync(
+    "/etc/letsencrypt/live/forceshifters.website/fullchain.pem"
+  );
+
+  const server = createServer(
+    {
+      key: privateKey,
+      cert: certificate,
+    },
+    app
+  );
+  wss = new WebSocket.Server({ server });
+}
+
+//// SECTION FOR LOCAL DEBUG
+else {
+  wss = new WebSocket.Server({ port: 8080 });
+  console.log("were listening 8080");
+}
+
+//// END SECTION
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfBpOoGPFuvqRrPGOyQanqVXwybLDnu_g",
@@ -43,7 +57,6 @@ const {
   getDatabase,
   ref,
   onValue,
-  connectDatabaseEmulator,
   set,
   get,
   remove,
@@ -54,8 +67,10 @@ let firebaseApp;
 let db;
 
 try {
-  const emulatorUrl = "http://127.0.0.1:9000/?ns=force-animals";
-  // firebaseConfig.databaseURL = emulatorUrl;
+  if (IS_LOCAL) {
+    const emulatorUrl = "http://127.0.0.1:9000/?ns=force-animals";
+    firebaseConfig.databaseURL = emulatorUrl;
+  }
   firebaseApp = initializeApp(firebaseConfig);
   db = getDatabase(firebaseApp);
 } catch (error) {
@@ -71,6 +86,7 @@ try {
 }
 
 wss.on("connection", function (ws) {
+  console.log("client connected");
   let battleRef;
   let lobbyRef;
   let userName;
@@ -85,8 +101,13 @@ wss.on("connection", function (ws) {
 
       onValue(battleRef, (snapshot) => {
         const data = snapshot.val();
-        console.log(JSON.stringify(data));
-        ws.send(JSON.stringify(data), function () {
+
+        const battleData = {
+          type: "battle",
+          data,
+        };
+
+        ws.send(JSON.stringify(battleData), function () {
           //
           // Ignoring errors.
           //
@@ -97,7 +118,6 @@ wss.on("connection", function (ws) {
     if (parsedMessage.type === "lobby") {
       lobbyRef = ref(db, `lobby`);
       userName = parsedMessage.userName;
-      console.log(userName);
 
       // Add oneself to the lobby list
       set(ref(db, `lobby/${userName}`), {
@@ -107,8 +127,15 @@ wss.on("connection", function (ws) {
 
       onValue(lobbyRef, (snapshot) => {
         const data = snapshot.val();
-        console.log(JSON.stringify(data));
-        ws.send(JSON.stringify(data), function () {
+
+        const lobbyData = {
+          type: "lobby",
+          data: {
+            players: data,
+          },
+        };
+
+        ws.send(JSON.stringify(lobbyData), function () {
           //
           // Ignoring errors.
           //
@@ -122,11 +149,13 @@ wss.on("connection", function (ws) {
       get(ref(db, `lobby/${opponent}`)).then((value) => {
         const opponentExistingLobby = value.val();
 
-        set(ref(db, `lobby/${opponent}`), {
-          status: "idle",
-          challenges: [userName],
-          ...opponentExistingLobby,
-        });
+        if (opponentExistingLobby != null) {
+          set(ref(db, `lobby/${opponent}`), {
+            status: "idle",
+            challenges: [userName],
+            ...opponentExistingLobby,
+          });
+        }
       });
     }
 
@@ -169,6 +198,8 @@ wss.on("connection", function (ws) {
   });
 });
 
-server.listen(8080, function () {
-  console.log("Listening on http://0.0.0.0:8080");
-});
+if (!IS_LOCAL) {
+  server.listen(8080, function () {
+    console.log("Listening on http://0.0.0.0:8080");
+  });
+}
