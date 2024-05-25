@@ -15,6 +15,7 @@ app.use(express.static(path.join(__dirname, "/public")));
 //// SECTION FOR SERVER
 
 let wss;
+let server;
 if (!IS_LOCAL) {
   var privateKey = fs.readFileSync(
     "/etc/letsencrypt/live/forceshifters.website/privkey.pem"
@@ -23,7 +24,7 @@ if (!IS_LOCAL) {
     "/etc/letsencrypt/live/forceshifters.website/fullchain.pem"
   );
 
-  const server = createServer(
+  server = createServer(
     {
       key: privateKey,
       cert: certificate,
