@@ -147,6 +147,10 @@ wss.on("connection", function (ws) {
     if (parsedMessage.type === "challenge") {
       const opponent = parsedMessage.opponent;
 
+      if (!opponent) {
+        return;
+      }
+
       get(ref(db, `lobby/${opponent}`)).then((value) => {
         const opponentExistingLobby = value.val();
 
@@ -162,6 +166,10 @@ wss.on("connection", function (ws) {
 
     if (parsedMessage.type === "enterBattle") {
       const opponent = parsedMessage.opponent;
+
+      if (!opponent) {
+        return;
+      }
 
       const randomBattleName = Math.random().toString(36).substring(7);
       // set in battle to both players
