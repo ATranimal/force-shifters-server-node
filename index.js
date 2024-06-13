@@ -90,7 +90,11 @@ wss.on("connection", function (ws) {
   console.log("client connected");
   let battleRef;
   let lobbyRef;
-  let userName;
+  // {
+  //   playerName: string;
+  //   shifterAvatar: string;
+  // }
+  let playerInfo;
 
   ws.on("message", function (message) {
     const parsedMessage = JSON.parse(message);
@@ -118,11 +122,13 @@ wss.on("connection", function (ws) {
 
     if (parsedMessage.type === "lobby") {
       lobbyRef = ref(db, `lobby`);
-      userName = parsedMessage.userName;
+
+      playerInfo = JSON.parse(parsedMessage.playerInfo);
 
       // Add oneself to the lobby list
-      set(ref(db, `lobby/${userName}`), {
-        name: userName,
+      set(ref(db, `lobby/${playerInfo.playerName}`), {
+        name: playerInfo.playerName,
+        shifterAvatar: playerInfo.shifterAvatar,
         status: "idle",
       });
 
@@ -157,7 +163,7 @@ wss.on("connection", function (ws) {
         if (opponentExistingLobby != null) {
           set(ref(db, `lobby/${opponent}`), {
             status: "idle",
-            challenges: [userName],
+            challenges: [playerInfo.playerName],
             ...opponentExistingLobby,
           });
         }
@@ -173,9 +179,9 @@ wss.on("connection", function (ws) {
 
       const randomBattleName = Math.random().toString(36).substring(7);
       // set in battle to both players
-      get(ref(db, `lobby/${userName}`)).then((value) => {
+      get(ref(db, `lobby/${playerInfo.playerName}`)).then((value) => {
         const yourExistingLobby = value.val();
-        set(ref(db, `lobby/${userName}`), {
+        set(ref(db, `lobby/${playerInfo.playerName}`), {
           ...yourExistingLobby,
           status: "inBattle",
           roomName: randomBattleName,
@@ -194,7 +200,9 @@ wss.on("connection", function (ws) {
   });
 
   ws.on("close", function () {
-    remove(ref(db, `lobby/${userName}`));
+    if (!!playerInfo.playerName) {
+      remove(ref(db, `lobby/${playerInfo.playerName}`));
+    }
 
     console.log("stopping client interval");
 
