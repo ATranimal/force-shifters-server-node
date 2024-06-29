@@ -200,10 +200,6 @@ wss.on("connection", function (ws) {
   });
 
   ws.on("close", function () {
-    if (!!playerInfo.playerName) {
-      remove(ref(db, `lobby/${playerInfo.playerName}`));
-    }
-
     console.log("stopping client interval");
 
     if (battleRef) {
@@ -211,6 +207,14 @@ wss.on("connection", function (ws) {
     }
     if (lobbyRef) {
       off(lobbyRef);
+    }
+
+    if (playerInfo == undefined || playerInfo == null) {
+      return;
+    } else {
+      if (!!playerInfo && !!playerInfo.playerName) {
+        remove(ref(db, `lobby/${playerInfo.playerName}`));
+      }
     }
   });
 });
