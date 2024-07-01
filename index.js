@@ -200,14 +200,14 @@ wss.on("connection", function (ws) {
   });
 
   ws.on("close", function () {
-    console.log("stopping client interval");
+    console.log(`"stopping client interval for ${playerInfo}`);
 
-    if (battleRef) {
-      off(battleRef);
-    }
-    if (lobbyRef) {
-      off(lobbyRef);
-    }
+    // if (battleRef) {
+    //   off(battleRef);
+    // }
+    // if (lobbyRef) {
+    //   off(lobbyRef);
+    // }
 
     if (playerInfo == undefined || playerInfo == null) {
       return;
