@@ -88,17 +88,27 @@ try {
 
 wss.on("connection", function (ws) {
   console.log("client connected");
+
   let battleRef;
   let lobbyRef;
   // {
   //   playerName: string;
   //   shifterAvatar: string;
   // }
+
   let playerInfo;
 
   ws.on("message", function (message) {
     const parsedMessage = JSON.parse(message);
     console.log("parsedMessage", parsedMessage);
+
+    if (parsedMessage.type === "ping") {
+      ws.send(JSON.stringify({ type: "pong" }), function () {
+        //
+        // Ignoring errors.
+        //
+      });
+    }
 
     if (parsedMessage.type === "roomName") {
       const { roomName } = parsedMessage;
@@ -129,7 +139,6 @@ wss.on("connection", function (ws) {
       set(ref(db, `lobby/${playerInfo.playerName}`), {
         name: playerInfo.playerName,
         shifterAvatar: playerInfo.shifterAvatar,
-        status: "idle",
       });
 
       onValue(lobbyRef, (snapshot) => {
@@ -161,9 +170,13 @@ wss.on("connection", function (ws) {
         const opponentExistingLobby = value.val();
 
         if (opponentExistingLobby != null) {
+          //TODO: add check if the challenge exists already or not
+          if (playerInfo.challenges.some((name) => name === opponent)) {
+            return;
+          }
+
           set(ref(db, `lobby/${opponent}`), {
-            status: "idle",
-            challenges: [playerInfo.playerName],
+            challenges: [...playerInfo.challenges, playerInfo.playerName],
             ...opponentExistingLobby,
           });
         }
@@ -183,7 +196,6 @@ wss.on("connection", function (ws) {
         const yourExistingLobby = value.val();
         set(ref(db, `lobby/${playerInfo.playerName}`), {
           ...yourExistingLobby,
-          status: "inBattle",
           roomName: randomBattleName,
         });
 
@@ -191,7 +203,6 @@ wss.on("connection", function (ws) {
           const opponentExistingLobby = value.val();
           set(ref(db, `lobby/${opponent}`), {
             ...opponentExistingLobby,
-            status: "inBattle",
             roomName: randomBattleName,
           });
         });
@@ -212,6 +223,7 @@ wss.on("connection", function (ws) {
     if (playerInfo == undefined || playerInfo == null) {
       return;
     } else {
+      // lobby cleanup
       if (!!playerInfo && !!playerInfo.playerName) {
         remove(ref(db, `lobby/${playerInfo.playerName}`));
       }
