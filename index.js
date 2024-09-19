@@ -1,7 +1,7 @@
 "use strict";
 
 // TODO: Exchange for env variables
-const IS_LOCAL = false;
+const IS_LOCAL = true;
 
 const express = require("express");
 const path = require("path");
@@ -171,7 +171,7 @@ wss.on("connection", function (ws) {
 
         if (opponentExistingLobby != null) {
           //TODO: add check if the challenge exists already or not
-          if (playerInfo.challenges.some((name) => name === opponent)) {
+          if (playerInfo.challenges?.some((name) => name === opponent)) {
             return;
           }
 
