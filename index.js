@@ -171,9 +171,12 @@ wss.on("connection", function (ws) {
 
         if (opponentExistingLobby != null) {
           //TODO: add check if the challenge exists already or not
-          if (playerInfo.challenges?.some((name) => name === opponent)) {
-            return;
-          }
+          // if (
+          //   !!playerInfo.challenges &&
+          //   playerInfo.challenges.some((name) => name === opponent)
+          // ) {
+          //   return;
+          // }
 
           set(ref(db, `lobby/${opponent}`), {
             challenges: [...playerInfo.challenges, playerInfo.playerName],
