@@ -179,7 +179,9 @@ wss.on("connection", function (ws) {
           // }
 
           set(ref(db, `lobby/${opponent}`), {
-            challenges: [...playerInfo.challenges, playerInfo.playerName],
+            challenges: !!playerInfo.challenges
+              ? [playerInfo.playerName]
+              : [...playerInfo.challenges, playerInfo.playerName],
             ...opponentExistingLobby,
           });
         }
