@@ -161,6 +161,7 @@ wss.on("connection", function (ws) {
 
     if (parsedMessage.type === "challenge") {
       const opponent = parsedMessage.opponent;
+      const challengeType = parsedMessage.challengeType;
 
       if (!opponent) {
         return;
@@ -170,18 +171,23 @@ wss.on("connection", function (ws) {
         const opponentExistingLobby = value.val();
 
         if (opponentExistingLobby != null) {
-          //TODO: add check if the challenge exists already or not
-          // if (
-          //   !!playerInfo.challenges &&
-          //   playerInfo.challenges.some((name) => name === opponent)
-          // ) {
-          //   return;
-          // }
+          const existingChallenges = opponentExistingLobby.challenges || [];
+          const challengeAlreadyExists = existingChallenges.some(
+            (challenge) => challenge.playerName === playerInfo.playerName
+          );
 
-          set(ref(db, `lobby/${opponent}`), {
-            challenges: [playerInfo.playerName],
-            ...opponentExistingLobby,
-          });
+          if (!challengeAlreadyExists) {
+            set(ref(db, `lobby/${opponent}`), {
+              challenges: [
+                ...existingChallenges,
+                {
+                  playerName: playerInfo.playerName,
+                  challengeType,
+                },
+              ],
+              ...opponentExistingLobby,
+            });
+          }
         }
       });
     }
@@ -192,21 +198,31 @@ wss.on("connection", function (ws) {
       if (!opponent) {
         return;
       }
-
-      const randomBattleName = Math.random().toString(36).substring(7);
-      // set in battle to both players
       get(ref(db, `lobby/${playerInfo.playerName}`)).then((value) => {
-        const yourExistingLobby = value.val();
-        set(ref(db, `lobby/${playerInfo.playerName}`), {
-          ...yourExistingLobby,
-          roomName: randomBattleName,
-        });
+        const yourLobby = value.val();
 
-        get(ref(db, `lobby/${opponent}`)).then((value) => {
-          const opponentExistingLobby = value.val();
-          set(ref(db, `lobby/${opponent}`), {
-            ...opponentExistingLobby,
+        const existingChallenges = yourLobby.challenges || [];
+        const thisChallenge = existingChallenges.find(
+          (challenge) => challenge.playerName === opponent
+        );
+
+        const randomBattleName = Math.random().toString(36).substring(7);
+        // set in battle to both players
+        get(ref(db, `lobby/${playerInfo.playerName}`)).then((value) => {
+          const yourExistingLobby = value.val();
+          set(ref(db, `lobby/${playerInfo.playerName}`), {
+            ...yourExistingLobby,
             roomName: randomBattleName,
+            challengeType: thisChallenge.challengeType,
+          });
+
+          get(ref(db, `lobby/${opponent}`)).then((value) => {
+            const opponentExistingLobby = value.val();
+            set(ref(db, `lobby/${opponent}`), {
+              ...opponentExistingLobby,
+              roomName: randomBattleName,
+              challengeType: thisChallenge.challengeType,
+            });
           });
         });
       });
