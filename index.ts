@@ -81,8 +81,12 @@ let db;
 // Initialize database based on mode
 if (IS_LOCAL) {
   // Use lowdb for local/offline mode
-  db = getLowdbDatabase("./data/offline-db.json");
+  // Path is relative to working directory - Unity will set this when launching
+  // Or use DB_PATH environment variable if provided
+  const dbPath = process.env.DB_PATH || "./data/offline-db.json";
+  db = getLowdbDatabase(dbPath);
   console.log("Using Lowdb for local/offline mode");
+  console.log(`Database path: ${dbPath}`);
 } else {
   // Use Firebase RTDB for production
   try {
