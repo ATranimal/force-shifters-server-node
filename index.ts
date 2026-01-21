@@ -3,6 +3,28 @@
 // TODO: Exchange for env variables
 const IS_LOCAL = true; // true = lowdb (offline), false = Firebase RTDB (production)
 
+// Graceful error handling - keep server alive
+process.on("uncaughtException", (error) => {
+  console.error("[WS ERROR] Uncaught Exception:", error.message);
+  console.error("Stack:", error.stack);
+  // Log but don't exit - keep server running
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[WS ERROR] Unhandled Promise Rejection:", reason);
+  // Log but don't exit - keep server running
+});
+
+process.on("SIGTERM", () => {
+  console.log("[WS] SIGTERM received, shutting down gracefully");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("[WS] SIGINT received, shutting down gracefully");
+  process.exit(0);
+});
+
 const express = require("express");
 const path = require("path");
 const { createServer } = require("https");
@@ -123,6 +145,7 @@ wss.on("connection", function (ws) {
 
   let battleRef;
   let lobbyRef;
+  let unsubscribeBattle; // Store unsubscribe function
   // {
   //   playerName: string;
   //   shifterAvatar: string;
@@ -132,7 +155,6 @@ wss.on("connection", function (ws) {
 
   ws.on("message", function (message) {
     const parsedMessage = JSON.parse(message);
-    console.log("parsedMessage", parsedMessage);
 
     if (parsedMessage.type === "ping") {
       ws.send(JSON.stringify({ type: "pong" }), function () {
@@ -144,9 +166,16 @@ wss.on("connection", function (ws) {
 
     if (parsedMessage.type === "roomName") {
       const { roomName } = parsedMessage;
+
+      // Unsubscribe from previous battle if exists
+      if (unsubscribeBattle) {
+        unsubscribeBattle();
+        unsubscribeBattle = null;
+      }
+
       battleRef = dbFunctions.ref(db, `${roomName}`);
 
-      dbFunctions.onValue(battleRef, (snapshot) => {
+      unsubscribeBattle = dbFunctions.onValue(battleRef, (snapshot) => {
         const data = snapshot.val();
 
         const battleData = {
