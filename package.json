@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon index.ts",
     "start": "ts-node index.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "build:bun": "bun build --compile --outfile=dist/ws-server ./index.ts"
   },
   "keywords": [],
   "author": "",
