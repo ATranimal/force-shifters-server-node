@@ -7,7 +7,9 @@
     "dev": "nodemon index.ts",
     "start": "ts-node index.ts",
     "build": "tsc",
-    "build:bun": "bun build --compile --outfile=dist/ws-server ./index.ts"
+    "build:bun": "bun build --compile --outfile=dist/ws-server ./index.ts",
+    "build:bun:windows": "bun build --compile --target=bun-windows-x64 --outfile=dist/ws-server.exe ./index.ts",
+    "build:bun:linux": "bun build --compile --target=bun-linux-x64 --outfile=dist/ws-server-linux ./index.ts"
   },
   "keywords": [],
   "author": "",
