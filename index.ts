@@ -1,10 +1,10 @@
 "use strict";
 
-const SERVER_VERSION = "1.0.10";
+const SERVER_VERSION = "1.0.12";
 const BUILD_DATE = new Date().toISOString();
 
 // TODO: Exchange for env variables
-const IS_LOCAL = true; // true = lowdb (offline), false = Firebase RTDB (production)
+const IS_LOCAL = false; // true = lowdb (offline), false = Firebase RTDB (production)
 
 // Graceful error handling - keep server alive
 process.on("uncaughtException", (error) => {
