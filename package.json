@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "dev": "nodemon index.ts",
+    "dev": "IS_LOCAL=true nodemon index.ts",
     "start": "ts-node index.ts",
     "build": "tsc",
     "build:bun": "bun build --compile --outfile=dist/ws-server ./index.ts",

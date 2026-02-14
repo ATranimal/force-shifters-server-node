@@ -1,10 +1,10 @@
 "use strict";
 
-const SERVER_VERSION = "1.0.12";
+const SERVER_VERSION = "1.0.13";
 const BUILD_DATE = new Date().toISOString();
 
-// TODO: Exchange for env variables
-const IS_LOCAL = false; // true = lowdb (offline), false = Firebase RTDB (production)
+// Use environment variable, defaults to false (production)
+const IS_LOCAL = process.env.IS_LOCAL === "true";
 
 // Graceful error handling - keep server alive
 process.on("uncaughtException", (error) => {
@@ -89,16 +89,25 @@ const {
   off,
 } = require("firebase/database");
 
-// Import lowdb for offline mode
-const {
-  getDatabase: getLowdbDatabase,
-  ref: lowdbRef,
-  onValue: lowdbOnValue,
-  set: lowdbSet,
-  get: lowdbGet,
-  remove: lowdbRemove,
-  off: lowdbOff,
-} = require("../force-animals/express-server/src/storage/LowdbDatabase");
+// Import lowdb for offline mode - only when IS_LOCAL is true
+let getLowdbDatabase: any,
+  lowdbRef: any,
+  lowdbOnValue: any,
+  lowdbSet: any,
+  lowdbGet: any,
+  lowdbRemove: any,
+  lowdbOff: any;
+
+if (IS_LOCAL) {
+  const lowdb = require("../force-animals/express-server/src/storage/LowdbDatabase");
+  getLowdbDatabase = lowdb.getDatabase;
+  lowdbRef = lowdb.ref;
+  lowdbOnValue = lowdb.onValue;
+  lowdbSet = lowdb.set;
+  lowdbGet = lowdb.get;
+  lowdbRemove = lowdb.remove;
+  lowdbOff = lowdb.off;
+}
 
 let firebaseApp;
 let db;
